@@ -3,10 +3,11 @@ import numpy as np
 import math
 import pandas as pd
 
-data = pd.read_csv("df_2019-2020.csv")
+data = pd.read_csv("df_2019-2020_modified.csv")
 print("imported")
 data.loc[data["LAW_CAT_CD"] == "FELONY", "isFELONY"] = 1 #filters and applys
 data.loc[data["LAW_CAT_CD"] != "FELONY", "isFELONY"] = 0 #filters and applys
+
 #data.to_csv("felony.csv")
 
 """
@@ -28,20 +29,29 @@ for borough in boroughs:
 
 """
 SUSP_AGE_GROUP
+make the variable 1-4, which is ok to be ordinal because it is age, and replace na or malformed values with the average
 """
-age = data["SUSP_AGE_GROUP"].unique()
-print(age)
-
+#ages = data["SUSP_AGE_GROUP"].unique()
+ageDict = {1:"<18", 2:"18-24", 3:"45-64", 4:"65+"}
+ageTotal = 0
+ageNumber = 0
+for code in ageDict:
+    age = ageDict[code]
+    data.loc[data["SUSP_AGE_GROUP"] == age, "SUSP_AGE_GROUP_CODED"] = code #filters and applys
+    n = data[data["SUSP_AGE_GROUP_CODED"] == code].shape[0]
+    ageNumber +=  n
+    ageTotal += code*n
+data["SUSP_AGE_GROUP_CODED"] = data["SUSP_AGE_GROUP_CODED"].fillna(ageTotal/ageNumber)
+data.to_csv("ageaverage.csv")
 
 """
 Compile up the features for the model
 """
 features = ['CMPLNT_FR_DT_CODED',
-            'CMPLNT_FR_TM_CODED']#,
-           # 'BORO_NM',
+            'CMPLNT_FR_TM_CODED',
+            "SUSP_AGE_GROUP_CODED"]#,
            # 'LOC_OF_OCCUR_DESC',
            # 'JURIS_DESC',
-           # 'SUSP_AGE_GROUP',
            # 'SUSP_RACE',
            # 'SUSP_SEX',
            # 'VIC_AGE_GROUP',
