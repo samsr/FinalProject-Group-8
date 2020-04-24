@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import category_encoders
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import StandardScaler
 from pandas import DataFrame
 from datetime import datetime
 from zipfile import ZipFile
@@ -37,7 +37,7 @@ def basic_inf(data):
 df = pd.read_csv("./df_2019-2020.csv", delimiter=',')
 print("BASIC INFO FOR the ORIGINAL DATA:")
 basic_inf(df)
-print()
+print("====" * 50)
 
 
 '''
@@ -56,19 +56,23 @@ my_col = ['CMPLNT_FR_DT',      'CMPLNT_FR_TM',   'ADDR_PCT_CD', 'KY_CD',        
 
 df2 = df[my_col].dropna(axis=0, subset=my_col)
 print("DF2 INFORMATION:")
+print()
 basic_inf(df2)
 
+
+'''
+    #col_catog = data.columns[data.dtypes == ('category')]
+    #col_catog = data.columns[data.dtypes == 'object']
+    #col_catog = ['CRM_ATPT_CPTD_CD', 'ADDR_PCT_CD', 'LAW_CAT_CD',
+               'BORO_NM', 'LOC_OF_OCCUR_DESC', 'PREM_TYP_DESC', 'JURISDICTION_CODE',
+                'SUSP_AGE_GROUP', 'SUSP_RACE', 'SUSP_SEX',
+               'VIC_AGE_GROUP', 'VIC_RACE', 'VIC_SEX']
+'''
 
 
 def column_desc(data):
 
-    #col_catog = data.columns[data.dtypes == ('category')]
-
-    col_catog = ['CRM_ATPT_CPTD_CD', 'ADDR_PCT_CD', 'LAW_CAT_CD',
-               'BORO_NM', 'LOC_OF_OCCUR_DESC', 'PREM_TYP_DESC', 'JURISDICTION_CODE',
-               'VIC_AGE_GROUP', 'VIC_RACE', 'VIC_SEX']
-
-    for cols in col_catog:
+    for cols in data.columns:
         print("COLUMN:", cols)
         print("UNIQUE VALUES:")
         print(data[cols].unique())
@@ -117,6 +121,7 @@ print("DF3 INFORMATION:")
 basic_inf(df4)
 column_desc(df4)
 print("====" * 50)
+
 
 def grpRow(data):
     premis_group = []
@@ -174,22 +179,21 @@ def grpRow(data):
 df5 = grpRow(df4)
 print("DF5 INFORMATION:")
 print(df5.head())
+print("====" * 50)
 
 
 def encoder(data):
 
+###### BINARY  ENCODER ######'
     B_encoder = category_encoders.BinaryEncoder(cols=['premis_var'])
     data = B_encoder.fit_transform(data)
 
-    '''
-    L_encoder = LabelEncoder()
-    data['BORO'] = L_encoder.fit_transform(data['BORO_NM'])
-    data['VIC_AGE'] = L_encoder.fit_transform(data['VIC_AGE_GROUP'])
-    data['LOC_DESC'] = L_encoder.fit_transform(data['LOC_OF_OCCUR_DESC'])
-    data['VICM_RAC'] = L_encoder.fit_transform(data['VIC_RACE'])
-    data['VICM_SEX'] = L_encoder.fit_transform(data['VIC_SEX'])
-    '''
+###### DATA STANDARDISATION ######
+    sc = StandardScaler()
+    data['incdt_time'] = sc.fit_transform(data['incdt_time'].values.reshape(-1,1))
+    data['incdt_date'] = sc.fit_transform(data['incdt_time'].values.reshape(-1,1))
 
+###### ONE HOT ENCODER ######
     OH_encoder = OneHotEncoder()
     hc1 = DataFrame(OH_encoder.fit_transform(data['BORO_NM'].values.reshape(-1,1)).toarray(),
                     columns = ['BORO1', 'BORO2','BORO3', 'BORO4', 'BORO5'])
@@ -207,6 +211,7 @@ def encoder(data):
                              'SUSP_RACE6', 'SUSP_RACE7'])
     hc7 = DataFrame(OH_encoder.fit_transform(data['VIC_SEX'].values.reshape(-1, 1)).toarray(),
                     columns=['SUSP_SEX1', 'SUSP_SEX2'])
+
     data = pd.concat([data,hc1,hc2,hc3,hc4,hc5,hc6,hc7], axis=1)
     return data
 
@@ -214,4 +219,34 @@ def encoder(data):
 df6 = encoder(df5)
 print("DF6 INFORMATION:")
 print(df6.head())
+print(basic_inf(df6))
+print(column_desc(df6))
+print("====" * 50)
+
+
+##################################################################################
+# After this point, it is about picking and choosing which variables to use in
+# modeling so will be deleting already encoded variables and encoding
+# my dependent variable.
+##################################################################################
+
+col_del = ['CMPLNT_FR_DT',      'CMPLNT_FR_TM',    'KY_CD',   'PD_CD', 'ADDR_PCT_CD',
+          'CRM_ATPT_CPTD_CD'  ,  'BORO_NM',     'LOC_OF_OCCUR_DESC', 'PREM_TYP_DESC',
+          'JURISDICTION_CODE', 'SUSP_AGE_GROUP', 'SUSP_RACE',   'SUSP_SEX', 'VIC_AGE_GROUP',
+          'VIC_RACE',          'VIC_SEX', 'SUSP_RACE1', 'SUSP_RACE2', 'SUSP_RACE3', 'SUSP_RACE4',
+           'SUSP_RACE5', 'SUSP_RACE6', 'SUSP_RACE7', 'SUSP_SEX1', 'SUSP_SEX2']
+
+df7 = df6.drop(columns=col_del)
+
+grps = []
+for i,row in df7.iterrows():
+    if row['LAW_CAT_CD'] == 'FELONY':
+        grps.append(1)
+    elif row['LAW_CAT_CD'] == 'MISDEMEANOR':
+        grps.append(2)
+    elif row['LAW_CAT_CD'] == 'VIOLATION':
+        grps.append(3)
+
+df7['OFFNS'] = grps
+df8 = df7.drop(columns='LAW_CAT_CD')
 
