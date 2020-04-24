@@ -23,7 +23,6 @@ pd.set_option('display.max_columns',10)
 def basic_inf(data):
     print(data.head())
     print("DATA INFORMATION:")
-    print(data.info)
     print("SOME STATS:")
     stats = data.describe(include='all')
     print(stats)
@@ -58,16 +57,6 @@ df2 = df[my_col].dropna(axis=0, subset=my_col)
 print("DF2 INFORMATION:")
 print()
 basic_inf(df2)
-
-
-'''
-    #col_catog = data.columns[data.dtypes == ('category')]
-    #col_catog = data.columns[data.dtypes == 'object']
-    #col_catog = ['CRM_ATPT_CPTD_CD', 'ADDR_PCT_CD', 'LAW_CAT_CD',
-               'BORO_NM', 'LOC_OF_OCCUR_DESC', 'PREM_TYP_DESC', 'JURISDICTION_CODE',
-                'SUSP_AGE_GROUP', 'SUSP_RACE', 'SUSP_SEX',
-               'VIC_AGE_GROUP', 'VIC_RACE', 'VIC_SEX']
-'''
 
 
 def column_desc(data):
@@ -191,7 +180,7 @@ def encoder(data):
 ###### DATA STANDARDISATION ######
     sc = StandardScaler()
     data['incdt_time'] = sc.fit_transform(data['incdt_time'].values.reshape(-1,1))
-    data['incdt_date'] = sc.fit_transform(data['incdt_time'].values.reshape(-1,1))
+    data['incdt_date'] = sc.fit_transform(data['incdt_date'].values.reshape(-1,1))
 
 ###### ONE HOT ENCODER ######
     OH_encoder = OneHotEncoder()
@@ -250,3 +239,4 @@ for i,row in df7.iterrows():
 df7['OFFNS'] = grps
 df8 = df7.drop(columns='LAW_CAT_CD')
 
+df8.to_csv('cleaned.csv')
