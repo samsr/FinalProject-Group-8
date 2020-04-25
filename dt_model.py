@@ -2,12 +2,32 @@
 import numpy as np
 import math
 import pandas as pd
+import random
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
+from sklearn.metrics import confusion_matrix
 
 data = pd.read_csv("df_2019-2020_modified.csv")
 print("imported")
+
+#col must be cleaned to only contain wanted values or null
+def populateRandDist(data, col):
+    distribution = data[col].value_counts(normalize=True)
+    nulls = data[col].isnull()
+    data.loc[nulls, col] = np.random.choice(distribution.index, size=len(data[nulls]), p=distribution.values)
+    return data
+
+"""
+Prep Targets
+"""
+print("performing some cleaning and encoding... please wait")
 data.loc[data["LAW_CAT_CD"] == "FELONY", "isFELONY"] = 1 #filters and applys
 data.loc[data["LAW_CAT_CD"] != "FELONY", "isFELONY"] = 0 #filters and applys
 
+data.loc[data["LAW_CAT_CD"] == "MISDEMEANOR", "isMISDEMEANOR"] = 1 #filters and applys
+data.loc[data["LAW_CAT_CD"] != "MISDEMEANOR", "isMISDEMEANOR"] = 0 #filters and applys
 #data.to_csv("felony.csv")
 
 """
@@ -28,6 +48,25 @@ for borough in boroughs:
     boroughFeatures.append("is" + borough)
 
 """
+race
+"""
+data["SUSP_RACE"] = data["SUSP_RACE"].fillna("UNKNOWN")
+races = data["SUSP_RACE"].unique()
+raceFeatures = []
+for race in races:
+    data.loc[data["SUSP_RACE"] == race, "isSUSP" + race] = 1 #filters and applys
+    data.loc[data["SUSP_RACE"] != race, "isSUSP" + race] = 0 #filters and applys
+    raceFeatures.append("isSUSP" + race)
+
+
+data["VIC_RACE"] = data["VIC_RACE"].fillna("UNKNOWN")
+races = data["VIC_RACE"].unique()
+for race in races:
+    data.loc[data["VIC_RACE"] == race, "isVIC" + race] = 1 #filters and applys
+    data.loc[data["VIC_RACE"] != race, "isVIC" + race] = 0 #filters and applys
+    raceFeatures.append("isVIC" + race)
+
+"""
 SUSP_AGE_GROUP
 make the variable 1-4, which is ok to be ordinal because it is age, and replace na or malformed values with the average
 """
@@ -42,57 +81,173 @@ for code in ageDict:
     ageNumber +=  n
     ageTotal += code*n
 data["SUSP_AGE_GROUP_CODED"] = data["SUSP_AGE_GROUP_CODED"].fillna(ageTotal/ageNumber)
-data.to_csv("ageaverage.csv")
+
+ageTotal = 0
+ageNumber = 0
+for code in ageDict:
+    age = ageDict[code]
+    data.loc[data["VIC_AGE_GROUP"] == age, "VIC_AGE_GROUP_CODED"] = code #filters and applys
+    n = data[data["VIC_AGE_GROUP_CODED"] == code].shape[0]
+    ageNumber +=  n
+    ageTotal += code*n
+data["VIC_AGE_GROUP_CODED"] = data["VIC_AGE_GROUP_CODED"].fillna(ageTotal/ageNumber)
+
+
+"""
+Clean out the misc. sex labels, set them to null, and replace them with a random distribution based on
+how many M/F there are
+"""
+notM = data["SUSP_SEX"] != "M"
+notF = data["SUSP_SEX"] != "F"
+data.loc[notM & notF, "SUSP_SEX"] = np.nan
+data.loc[data["SUSP_SEX"] == "U", "SUSP_SEX"] = np.nan
+data = populateRandDist(data, "SUSP_SEX")
+# distribution = data["SUSP_SEX"].value_counts(normalize = True)
+# nulls = data["SUSP_SEX"].isnull()
+# data.loc[nulls,"SUSP_SEX"] = np.random.choice(distribution.index, size = len(data[nulls]), p = distribution.values)
+
+
+notM = data["SUSP_SEX"] != "M"
+notF = data["SUSP_SEX"] != "F"
+data.loc[notM & notF, "SUSP_SEX"] = np.nan
+data.loc[data["SUSP_SEX"] == "U", "SUSP_SEX"] = np.nan
+data = populateRandDist(data, "SUSP_SEX")
+
+sexes = ["M", "F"]
+sexFeatures = []
+for sex in sexes:
+    data.loc[data["SUSP_SEX"] == sex, "isSUSP" + sex] = 1 #filters and applys
+    data.loc[data["SUSP_SEX"] != sex, "isSUSP" + sex] = 0 #filters and applys
+    sexFeatures.append("isSUSP" + sex)
+# distribution = data["SUSP_SEX"].value_counts(normalize = True)
+# nulls = data["SUSP_SEX"].isnull()
+# data.loc[nulls,"SUSP_SEX"] = np.random.choice(distribution.index, size = len(data[nulls]), p = distribution.values)
+
+notM = data["VIC_SEX"] != "M"
+notF = data["VIC_SEX"] != "F"
+data.loc[notM & notF, "VIC_SEX"] = np.nan
+data.loc[data["VIC_SEX"] == "U", "VIC_SEX"] = np.nan
+data = populateRandDist(data, "VIC_SEX")
+
+for sex in sexes:
+    data.loc[data["VIC_SEX"] == sex, "isVIC" + sex] = 1 #filters and applys
+    data.loc[data["VIC_SEX"] != sex, "isVIC" + sex] = 0 #filters and applys
+    sexFeatures.append("isVIC" + sex)
+
+
+"""
+LOC_OF_OCCUR_DESC
+"""
+data = populateRandDist(data, "LOC_OF_OCCUR_DESC")
+# distribution = data["LOC_OF_OCCUR_DESC"].value_counts(normalize = True)
+# nulls = data["LOC_OF_OCCUR_DESC"].isnull()
+# data.loc[nulls,"LOC_OF_OCCUR_DESC"] = np.random.choice(distribution.index, size = len(data[nulls]), p = distribution.values)
+
+locations = data["LOC_OF_OCCUR_DESC"].unique()
+locFeatures = []
+for loc in locations:
+    data.loc[data["LOC_OF_OCCUR_DESC"] == loc, "is" + loc] = 1 #filters and applys
+    data.loc[data["LOC_OF_OCCUR_DESC"] != loc, "is" + loc] = 0 #filters and applys
+    locFeatures.append("is" + loc)
+
+"""
+JURIS_DESC
+"""
+juris = data["JURIS_DESC"].unique()
+jurisFeatures = []
+for jur in juris:
+    data.loc[data["JURIS_DESC"] == jur, "is" + jur] = 1 #filters and applys
+    data.loc[data["JURIS_DESC"] != jur, "is" + jur] = 0 #filters and applys
+    jurisFeatures.append("is" + jur)
+
+"""
+PREM_TYP_DESC
+"""
+data = data[data['PREM_TYP_DESC'].notna()]
+prems = data["PREM_TYP_DESC"].unique()
+premFeatures = []
+for prem in prems:
+    data.loc[data["PREM_TYP_DESC"] == prem, "is" + prem] = 1 #filters and applys
+    data.loc[data["PREM_TYP_DESC"] != prem, "is" + prem] = 0 #filters and applys
+    premFeatures.append("is" + prem)
+
+#data.to_csv("data_for_graphs.csv")
+
+print("Generating models...")
+
+def scoring(y_test, predict):
+    accuracy = accuracy_score(y_true=y_test, y_pred=predict)
+    print("Accuracy: " + str(accuracy))
+    f1 = f1_score(y_true=y_test, y_pred=predict)
+    print("F1: " + str(f1))
+    confusion = confusion_matrix(y_true=y_test, y_pred=predict)
+    print("Confusion Matrix:")
+    print(confusion)
+
+def model(target, features):
+
+    y = data[target].copy() #this is our target
+    X = data[features].copy() #new dataset X as specified
+
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=.10)# random_state=1) #perform the train-test split, as usual
+
+    classifier = DecisionTreeClassifier(max_leaf_nodes=50, random_state=0) #initialize the classifier for training
+    classifier.fit(X_train, y_train) #fit the model
+
+    predict = classifier.predict(X_test) #generate preditions
+
+    scoring(y_test, predict)
+
 
 """
 Compile up the features for the model
 """
-features = ['CMPLNT_FR_DT_CODED',
-            'CMPLNT_FR_TM_CODED',
-            "SUSP_AGE_GROUP_CODED"]#,
-           # 'LOC_OF_OCCUR_DESC',
-           # 'JURIS_DESC',
-           # 'SUSP_RACE',
-           # 'SUSP_SEX',
-           # 'VIC_AGE_GROUP',
-           # 'VIC_RACE',
-           # 'VIC_SEX'] #column labels for features
-features = features + boroughFeatures
+features = ["CMPLNT_FR_DT_CODED",
+            "CMPLNT_FR_TM_CODED",
+            "SUSP_AGE_GROUP_CODED",
+            "VIC_AGE_GROUP_CODED"] #column labels for features
 
-y = data["isFELONY"].copy() #this is our target
+#add all the features we've built up
+features = features + boroughFeatures + raceFeatures + sexFeatures + locFeatures + jurisFeatures + premFeatures
 
-# Q6: Copying the values from the clean_data dataset to new dataset x which only consist of the Morning Feature Data
-# Hint: use a copy command in pandas
-# %%------------------------------------------------------------------------------------------------------------
+model("isFELONY", features)
 
-X = data[features].copy() #new dataset X as specified
+features = ["CMPLNT_FR_DT_CODED",
+            "CMPLNT_FR_TM_CODED",
+            "SUSP_AGE_GROUP_CODED",
+            "VIC_AGE_GROUP_CODED"] #column labels for features
 
-# Q7: Perform Test and Train split . USe 20 percent for test set and use random state of 1
-# %%------------------------------------------------------------------------------------------------------------
-
-from sklearn.model_selection import train_test_split
-
-X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=.20, random_state=1) #perform the train-test split, as usual
-
-from sklearn.tree import DecisionTreeClassifier
-
-classifier = DecisionTreeClassifier(max_leaf_nodes=50, random_state=0) #initialize the classifier for training
-classifier.fit(X_train, y_train) #fit the model
-
-predict = classifier.predict(X_test) #generate preditions
-
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import f1_score
-from sklearn.metrics import confusion_matrix
-
-accuracy = accuracy_score(y_true = y_test, y_pred = predict)
-print("Accuracy: " + str(accuracy))
-f1 = f1_score(y_true = y_test, y_pred = predict)
-print("F1: " + str(f1))
-confusion = confusion_matrix(y_true = y_test, y_pred = predict)
-print("Confusion Matrix:")
-print(confusion)
+#add all the features we've built up
+features = features + boroughFeatures + raceFeatures + sexFeatures + locFeatures + jurisFeatures + premFeatures
 #
+# def model(target, features):
+#
+#     y = data["isFELONY"].copy() #this is our target
+#     y2 = data["isMISDEMEANOR"].copy()
+#
+#     X = data[features].copy() #new dataset X as specified
+#
+#
+#
+#     X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=.10)# random_state=1) #perform the train-test split, as usual
+#     X_train2,X_test2,y_train2,y_test2 = train_test_split(X,y2,test_size=.10)# random_state=1) #perform the train-test split, as usual
+#
+#
+#
+#     classifier = DecisionTreeClassifier(max_leaf_nodes=50, random_state=0) #initialize the classifier for training
+#     classifier.fit(X_train, y_train) #fit the model
+#
+#     predict = classifier.predict(X_test) #generate preditions
+#
+#
+#     scoring(y_test, predict)
+#     classifier = DecisionTreeClassifier(max_leaf_nodes=50, random_state=0) #initialize the classifier for training
+#     classifier.fit(X_train2, y_train2) #fit the model
+#
+#     predict = classifier.predict(X_test2) #generate preditions
+#
+#     scoring(y_test, predict)
+    #
 # classifier = DecisionTreeClassifier(max_leaf_nodes=36, random_state=0) #initialize the classifier for training
 # classifier.fit(X_train, y_train) #fit the model
 #
