@@ -11,14 +11,14 @@ from sklearn.metrics import accuracy_score
 from sklearn.feature_selection import RFE
 from sklearn.svm import SVC
 
-df = pd.read_csv('cleaned.csv', index_col='Unnamed: 0', nrows=10000)
+df = pd.read_csv('cleaned.csv', index_col='Unnamed: 0', nrows=50000)
 print(df.head())
 
 
 ########## RANDOM FOREST ##########
 
-X = df.iloc[:,1:-1]
-Y = df.iloc[:,-1]
+X = df.iloc[:,3:-4]
+Y = df.iloc[:,-2]
 
 x_train, x_test, y_train, y_test = train_test_split(X,Y,test_size=0.25, random_state=13)
 rfc = RandomForestClassifier(bootstrap=True, n_estimators=100)
@@ -54,8 +54,8 @@ class_rpt(y_test,y_pred)
 
 ########## LOGISTIC REGRESSION ##########
 
-X_logr = df.iloc[:,1:-1]
-Y_logr = df.iloc[:,-1]
+X_logr = df.iloc[:,3:-3]
+Y_logr = df.iloc[:,-2]
 
 lr = LogisticRegression(solver='lbfgs')
 rfe = RFE(lr)

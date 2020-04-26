@@ -8,7 +8,7 @@ from pandas import DataFrame
 from datetime import datetime
 from zipfile import ZipFile
 
-desired_width=320
+desired_width=260
 pd.set_option('display.width', desired_width)
 np.set_printoptions(linewidth=desired_width)
 pd.set_option('display.max_columns',10)
@@ -47,7 +47,7 @@ my_col2 = ['CMPLNT_FR_DT',      'CMPLNT_FR_TM', 'CRM_ATPT_CPTD_CD', 'ADDR_PCT_CD
           'BORO_NM',     'LOC_OF_OCCUR_DESC', 'PREM_TYP_DESC', 'JURISDICTION_CODE',
            'VIC_AGE_GROUP', 'VIC_RACE', 'VIC_SEX']
 
-my_col = ['CMPLNT_FR_DT',      'CMPLNT_FR_TM',   'ADDR_PCT_CD', 'KY_CD',             'PD_CD',
+my_col = ['CMPLNT_FR_DT',      'CMPLNT_FR_TM',   'ADDR_PCT_CD', 'KY_CD', 'OFNS_DESC',    'PD_CD',
           'CRM_ATPT_CPTD_CD',  'LAW_CAT_CD',     'BORO_NM',     'LOC_OF_OCCUR_DESC', 'PREM_TYP_DESC',
           'JURISDICTION_CODE', 'SUSP_AGE_GROUP', 'SUSP_RACE',   'SUSP_SEX',          'VIC_AGE_GROUP',
           'VIC_RACE',          'VIC_SEX']
@@ -80,12 +80,24 @@ def dropRows(data):
     for i, row in data.iterrows():
         if row["SUSP_AGE_GROUP"] not in ["<18", "18-24", "25-44", "45-64", "65+"]:
             drops.append(i)
+
         if row["SUSP_SEX"]       not in ["M","F"]:
             drops.append(i)
+
+        if row["SUSP_RACE"]      not in ["BLACK","WHITE HISPANIC", "WHITE","BLACK HISPANIC",
+                                         "ASIAN / PACIFIC ISLANDER, AMERICAN INDIAN/ALASKAN NATIVE"]:
+            drops.append(i)
+
         if row["VIC_AGE_GROUP"]  not in ["<18", "18-24", "25-44", "45-64", "65+"]:
             drops.append(i)
+
         if row["VIC_SEX"]        not in ["M","F"]:
             drops.append(i)
+
+        if row["VIC_RACE"]       not in ["BLACK","WHITE HISPANIC", "WHITE","BLACK HISPANIC",
+                                         "ASIAN / PACIFIC ISLANDER, AMERICAN INDIAN/ALASKAN NATIVE"]:
+            drops.append(i)
+
     return data.drop(drops).reset_index(drop=True)
 
 
@@ -186,6 +198,8 @@ def grpRow(data):
     return data
 
 
+
+
 df5 = grpRow(df4)
 print("DF5 INFORMATION:")
 print(df5.head())
@@ -216,13 +230,11 @@ def encoder(data):
     hc3 = DataFrame(OH_encoder.fit_transform(data['LOC_OF_OCCUR_DESC'].values.reshape(-1, 1)).toarray(),
                     columns=['LOC_DESC1', 'LOC_DESC2', 'LOC_DESC3', 'LOC_DESC4'])
     hc4 = DataFrame(OH_encoder.fit_transform(data['VIC_RACE'].values.reshape(-1, 1)).toarray(),
-                    columns=['VIC_RACE1', 'VIC_RACE2', 'VIC_RACE3', 'VIC_RACE4', 'VIC_RACE5',
-                             'VIC_RACE6', 'VIC_RACE7'])
+                    columns=['VIC_RACE1', 'VIC_RACE2', 'VIC_RACE3', 'VIC_RACE4'])
     hc5 = DataFrame(OH_encoder.fit_transform(data['VIC_SEX'].values.reshape(-1, 1)).toarray(),
                     columns=['VICM_SEX1', 'VICM_SEX2'])
     hc6 = DataFrame(OH_encoder.fit_transform(data['SUSP_RACE'].values.reshape(-1, 1)).toarray(),
-                    columns=['SUSP_RACE1', 'SUSP_RACE2', 'SUSP_RACE3', 'SUSP_RACE4', 'SUSP_RACE5',
-                             'SUSP_RACE6', 'SUSP_RACE7'])
+                    columns=['SUSP_RACE1', 'SUSP_RACE2', 'SUSP_RACE3', 'SUSP_RACE4'])
     hc7 = DataFrame(OH_encoder.fit_transform(data['VIC_SEX'].values.reshape(-1, 1)).toarray(),
                     columns=['SUSP_SEX1', 'SUSP_SEX2'])
 
@@ -244,11 +256,11 @@ print("====" * 50)
 # my dependent variable.
 ##################################################################################
 
-col_del = ['CMPLNT_FR_DT',      'CMPLNT_FR_TM',    'KY_CD',    'ADDR_PCT_CD',
-          'CRM_ATPT_CPTD_CD'  ,  'BORO_NM',     'LOC_OF_OCCUR_DESC', 'PREM_TYP_DESC',
-          'JURISDICTION_CODE', 'SUSP_AGE_GROUP', 'SUSP_RACE',   'SUSP_SEX', 'VIC_AGE_GROUP',
-          'VIC_RACE',          'VIC_SEX', 'SUSP_RACE1', 'SUSP_RACE2', 'SUSP_RACE3', 'SUSP_RACE4',
-           'SUSP_RACE5', 'SUSP_RACE6', 'SUSP_RACE7', 'SUSP_SEX1', 'SUSP_SEX2']
+col_del = ['CMPLNT_FR_DT',      'CMPLNT_FR_TM',       'ADDR_PCT_CD',
+          'CRM_ATPT_CPTD_CD'  ,  'BORO_NM',           'LOC_OF_OCCUR_DESC', 'PREM_TYP_DESC',
+          'JURISDICTION_CODE',   'SUSP_AGE_GROUP',    'SUSP_RACE',        'SUSP_SEX',          'VIC_AGE_GROUP',
+          'VIC_RACE',            'VIC_SEX',           'SUSP_RACE1', 'SUSP_RACE2', 'SUSP_RACE3', 'SUSP_RACE4',
+          'SUSP_SEX1', 'SUSP_SEX2', 'incdt_time_0', 'premis_var_0']
 
 df7 = df6.drop(columns=col_del)
 
@@ -264,4 +276,6 @@ for i,row in df7.iterrows():
 df7['OFFNS'] = grps
 df8 = df7.drop(columns='LAW_CAT_CD')
 
+df8['PDCD_CODE'] = (df8['PD_CD']/100).astype('int') * 10
+df8['KYCD_CODE'] = (df8['KY_CD']/10).astype('int')
 df8.to_csv('cleaned.csv')
