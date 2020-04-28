@@ -1,0 +1,4 @@
+
+
+DataClean.py is the first program to run that creates the clean dataset to be feed into the model. Each step is printed out.
+DataModel.py is run second to see the results of three models. In the begneing of the program one can choose different target variables. 
