@@ -1,0 +1,14 @@
+Numeric:
+
+CMPLNT_FR_DT_CODED (0 = 1/1/1900 for date)
+COMPLT_FR_TM_CODED (0 = midnight)
+VIC_AGE_GROUP_CODED (<18 = 1, etc)
+
+one hot encoded, per possible feature:
+
+BORO_NM
+VIC_RACE
+VIC_SEX
+LOC_OF_OCCUR_DESC
+JURIS_DESC
+PREM_TYP_DESC
